@@ -17,6 +17,9 @@ rooms.set(2, {
     players: []
 })
 
+app.get('/', (req, res) => {
+    res.json({message: "You are in Socket Server"})
+})
 
 const io = new Server(server, {
     cors: { 
