@@ -24,7 +24,8 @@ app.get('/', (req, res) => {
 const io = new Server(server, {
     cors: { 
         origin:[
-            'http://localhost:5173'
+            "https://steveapp.vercel.app",
+            'http://localhost:5173',
         ],
         methods: ["GET", "POST"]
     }
