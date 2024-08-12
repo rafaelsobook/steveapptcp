@@ -9,10 +9,10 @@ const {generateUUID} = require("./tools.js")
 
 const rooms = new Map()
 rooms.set(1, {
-    limit: 2,
+    limit: 4,
     players: []
 })
-rooms.set(2, {
+rooms.set(4, {
     limit: 2,
     players: []
 })
@@ -32,30 +32,40 @@ const io = new Server(server, {
     }
 })
 io.on("connection", socket => {
-    console.log(30, socket.id)
+    console.log(35, socket.id)
     socket.emit("room-size", rooms.size)
     socket.on('joinRoom', data => {
-        log(data)
+        const roomNum = parseInt(data.roomNumber)
+        const room = rooms.get(roomNum)
+        if(!room) return console.log(47, 'room number not found')
+        if(room.limit <= room.players.length) return log(48, "players full")
+
         const playerDetail = {
             _id: generateUUID(),
             name: data.name,
             socketId: socket.id,
-            loc: {x:-2+Math.random()*3,y:0,z:-2 + Math.random()*3}
+            loc: {x:-2+Math.random()*3,y:0,z:-2 + Math.random()*3},
+            roomNum: roomNum
         }
-        const roomNum = parseInt(data.roomNumber)
-        const room = rooms.get(roomNum)
-        if(!room) return console.log(41, 'room number not found')
-        if(room.limit <= room.players.length) return log(42, "players full")
         socket.join(roomNum)
         room.players.push(playerDetail)
         io.to(roomNum).emit("player-joined", {
             newPlayer: data,
             allPlayers: rooms.get(roomNum).players
         })
-        socket.emit("my-detail", playerDetail)
-        log(rooms.get(roomNum))
+        socket.emit("who-am-i", playerDetail)
+        log(`${data.name} has joined room ${roomNum}`)
         // socket.emit('player', playerDetail)
         // io.emit('players-details', players)
+    })
+
+    // movements 
+    socket.on("player-movement", data => {
+        for (const [key, value] of rooms) {
+            const playerToMove = value.players.find(pl => pl.socketId === data.socketId)
+            if(playerToMove) {
+            }
+        }
     })
     socket.on('disconnect', () => {
         for (const [key, value] of rooms) {
