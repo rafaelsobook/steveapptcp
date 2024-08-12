@@ -24,6 +24,7 @@ app.get('/', (req, res) => {
 const io = new Server(server, {
     cors: { 
         origin:[
+            "https://steveapp.vercel.app",
             "https://stevegame.vercel.app",
             'http://localhost:5173',
         ],
