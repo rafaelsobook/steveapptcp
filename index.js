@@ -185,13 +185,11 @@ io.on("connection", socket => {
                 }
                 if(pl._movingLeft) {
                     const diffX = (pl.loc.x-spd)-pl.loc.x
-                    
                     pl.loc.x-=spd
                     // pl.dir.x = pl.loc.x+diffX*10
                 }
                 if(pl._movingRight) {
                     const diffX = (pl.loc.x+spd)-pl.loc.x
-                    
                     pl.loc.x+=spd
                     // pl.dir.x = pl.loc.x+diffX*10
                 }
@@ -199,7 +197,8 @@ io.on("connection", socket => {
             })                      
             io.to(key).emit("a-player-moved", value.players)
         }
-    }, 1000/20)
+    }, 1000/60)
+
     socket.on('disconnect', () => {
         for (const [key, value] of rooms) {
             const disconnectedPlayer = value.players.find(pl => pl.socketId === socket.id)
