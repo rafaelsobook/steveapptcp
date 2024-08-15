@@ -76,8 +76,10 @@ io.on("connection", socket => {
     })
 
     // movements 
-    let spd = .03
+    let fps = 20
+    let spd = .3 / fps
     socket.on("emit-move", data => {
+        log(data.dir)
         for (const [key, value] of rooms) {
             let playerToMove = value.players.find(pl => pl._id === data._id)
             if(playerToMove) {
@@ -171,33 +173,30 @@ io.on("connection", socket => {
         for (const [key, value] of rooms) {
             if(!value.players.length) return
             value.players.forEach(pl => {
-                if(pl._movingForward) {
-                    const diffZ = (pl.loc.z+spd)-pl.loc.z
-                    
+                const plPos = pl.loc
+                if(pl._movingForward) {                                       
                     pl.loc.z+=spd
-                //    pl.dir.z = pl.loc.z+diffZ*10
                 }
-                if(pl._movingBackward) {
-                    const diffZ = (pl.loc.z-spd)-pl.loc.z
-                    
+                if(pl._movingBackward) {                                       
                     pl.loc.z-=spd
-                    // pl.dir.z = pl.loc.z+diffZ*10
                 }
                 if(pl._movingLeft) {
-                    const diffX = (pl.loc.x-spd)-pl.loc.x
                     pl.loc.x-=spd
-                    // pl.dir.x = pl.loc.x+diffX*10
                 }
                 if(pl._movingRight) {
-                    const diffX = (pl.loc.x+spd)-pl.loc.x
                     pl.loc.x+=spd
-                    // pl.dir.x = pl.loc.x+diffX*10
                 }
- 
-            })                      
+                const diffX = pl.loc.x - plPos.x
+                const diffZ = pl.loc.z - plPos.z
+                const multX = diffX*10000000000
+                const multZ = diffZ*10000000000
+                const targX = pl.loc.x+multX
+                const targZ = pl.loc.z+multZ
+                pl.dir = {x: targX, z: targZ}
+            })              
             io.to(key).emit("a-player-moved", value.players)
         }
-    }, 1000/60)
+    }, 30)
 
     socket.on('disconnect', () => {
         for (const [key, value] of rooms) {
