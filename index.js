@@ -12,8 +12,8 @@ rooms.set(1, {
     limit: 4,
     players: []
 })
-rooms.set(4, {
-    limit: 2,
+rooms.set(2, {
+    limit: 4,
     players: []
 })
 
@@ -44,8 +44,24 @@ io.on("connection", socket => {
             _id: generateUUID(),
             name: data.name,
             socketId: socket.id,
-            loc: {x:-2+Math.random()*3,y:0,z:-2 + Math.random()*3},
-            roomNum: roomNum
+            loc: {
+                x: 0,//-2+Math.random()*3,
+                y:0,
+                z: 0,//-2 + Math.random()*3
+            },
+            dir: {
+                x:0,
+                y:0,
+                z: 0 // facing forward
+            },
+            roomNum: roomNum,
+            _movingForward: false,
+            _movingLeft: false,
+            _movingRight: false,
+            _movingBackward: false,
+            _movementName: undefined,
+            verticalNum: 0, // for direction z
+            horizontalNum: 0, // for direction x
         }
         socket.join(roomNum)
         room.players.push(playerDetail)
@@ -60,13 +76,130 @@ io.on("connection", socket => {
     })
 
     // movements 
-    socket.on("player-movement", data => {
+    let spd = .03
+    socket.on("emit-move", data => {
         for (const [key, value] of rooms) {
-            const playerToMove = value.players.find(pl => pl.socketId === data.socketId)
+            let playerToMove = value.players.find(pl => pl._id === data._id)
             if(playerToMove) {
+                const {x,y,z} = data.loc
+                
+                playerToMove.loc = {x,y,z}
+                switch(data.movementName){
+                    case "clickedTarget":
+                        const dir = data.direction
+                        const diff = { x: dir.x - x, z: dir.z -z}
+                        const distance = Math.sqrt(diff.x**2 + diff.z**2)
+                        log(distance)
+                        // playerToMove._movingForward = true
+                        // playerToMove._movingBackward = false
+                        // playerToMove._movingRight = false
+                        // playerToMove._movingLeft = false
+                    break
+                    case "forward":
+                        playerToMove._movingBackward = false
+                        playerToMove._movingForward = true
+                        playerToMove.verticalNum = 1
+                        if(playerToMove._movingLeft) playerToMove._movingRight = false
+                        if(playerToMove._movingRight) playerToMove._movingLeft = false
+                    break;
+                    case "left":
+                        playerToMove._movingRight = false
+                        playerToMove._movingLeft = true   
+                        playerToMove.horizontalNum = -1                     
+                    break;
+                    case "right":
+                        playerToMove._movingLeft = false
+                        playerToMove._movingRight = true
+                        playerToMove.horizontalNum = 1
+                    break;
+                    case "backward":
+                        playerToMove._movingForward = false
+                        playerToMove._movingBackward = true
+                        playerToMove.verticalNum = -1
+                        if(playerToMove._movingLeft) playerToMove._movingRight = false
+                        if(playerToMove._movingRight) playerToMove._movingLeft = false
+                    break;
+                }
+                playerToMove._movementName = data.movementName
+                log("forward", playerToMove._movingForward)
+                log("backward", playerToMove._movingBackward)
+                // log("left", playerToMove._movingLeft)
+                // log("right", playerToMove._movingRight)
             }
         }
     })
+    socket.on("emit-stopped", data => {
+        for (const [key, value] of rooms) {
+            let playerToStop = value.players.find(pl => pl._id === data._id)
+            if(playerToStop) {
+                log("a player stopped")
+                switch(data.movementName){
+                    case "jump":
+                        playerToStop._movingRight = false
+                        playerToStop._movingLeft = false   
+                        playerToStop._movingForward = false
+                        playerToStop._movingBackward = false
+                        log("jumping")
+                    break;
+                    case "forward":
+                        playerToStop._movingForward = false
+                        playerToStop._movingBackward = false
+                        // playerToMove.verticalNum = 0
+                    break;
+                    case "left":
+                        playerToStop._movingRight = false
+                        playerToStop._movingLeft = false   
+                        // playerToMove.horizontalNum = 0                     
+                    break;
+                    case "right":
+                        playerToStop._movingRight = false
+                        playerToStop._movingLeft = false   
+                        // playerToMove.horizontalNum = 0
+                    break;
+                    case "backward":
+                        playerToStop._movingForward = false
+                        playerToStop._movingBackward = false
+                        // playerToMove.verticalNum == 0
+                    break;
+                }
+                playerToStop._movementName = data.movementName
+                io.to(key).emit("player-stopped", data)
+            }
+        }
+    })
+    setInterval(() => {
+        for (const [key, value] of rooms) {
+            if(!value.players.length) return
+            value.players.forEach(pl => {
+                if(pl._movingForward) {
+                    const diffZ = (pl.loc.z+spd)-pl.loc.z
+                    
+                    pl.loc.z+=spd
+                //    pl.dir.z = pl.loc.z+diffZ*10
+                }
+                if(pl._movingBackward) {
+                    const diffZ = (pl.loc.z-spd)-pl.loc.z
+                    
+                    pl.loc.z-=spd
+                    // pl.dir.z = pl.loc.z+diffZ*10
+                }
+                if(pl._movingLeft) {
+                    const diffX = (pl.loc.x-spd)-pl.loc.x
+                    
+                    pl.loc.x-=spd
+                    // pl.dir.x = pl.loc.x+diffX*10
+                }
+                if(pl._movingRight) {
+                    const diffX = (pl.loc.x+spd)-pl.loc.x
+                    
+                    pl.loc.x+=spd
+                    // pl.dir.x = pl.loc.x+diffX*10
+                }
+ 
+            })                      
+            io.to(key).emit("a-player-moved", value.players)
+        }
+    }, 1000/20)
     socket.on('disconnect', () => {
         for (const [key, value] of rooms) {
             const disconnectedPlayer = value.players.find(pl => pl.socketId === socket.id)
