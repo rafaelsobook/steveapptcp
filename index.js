@@ -17,9 +17,10 @@ rooms.set(2, {
     players: []
 })
 
-app.get('/', (req, res) => {
-    res.json({message: "You are in Socket Server"})
-})
+app.use(express.static("public"))
+// app.get('/', (req, res) => {
+//     res.json({message: "You are in Socket Server"})
+// })
 
 const io = new Server(server, {
     cors: { 
@@ -54,6 +55,7 @@ io.on("connection", socket => {
                 y:0,
                 z: 0 // facing forward
             },
+            avatarUrl: "", 
             roomNum: roomNum,
             _movingForward: false,
             _movingLeft: false,
@@ -61,7 +63,8 @@ io.on("connection", socket => {
             _movingBackward: false,
             _movementName: undefined,
             verticalNum: 0, // for direction z
-            horizontalNum: 0, // for direction x
+            horizontalNum: 0, // for direction x,
+            currentSpd: 0,
         }
         socket.join(roomNum)
         room.players.push(playerDetail)
@@ -98,6 +101,8 @@ io.on("connection", socket => {
                         // playerToMove._movingLeft = false
                     break
                     case "forward":
+                        if(playerToMove.currentSpd < spd) playerToMove.currentSpd+=.02
+                        // playerToMove.loc.z+=playerToMove.currentSpd
                         playerToMove._movingBackward = false
                         playerToMove._movingForward = true
                         playerToMove.verticalNum = 1
@@ -105,16 +110,22 @@ io.on("connection", socket => {
                         if(playerToMove._movingRight) playerToMove._movingLeft = false
                     break;
                     case "left":
+                        if(playerToMove.currentSpd < spd) playerToMove.currentSpd+=.02
+                        // playerToMove.loc.x-=playerToMove.currentSpd
                         playerToMove._movingRight = false
                         playerToMove._movingLeft = true   
                         playerToMove.horizontalNum = -1                     
                     break;
                     case "right":
+                        if(playerToMove.currentSpd < spd) playerToMove.currentSpd+=.02
+                        // playerToMove.loc.x-=playerToMove.currentSpd
                         playerToMove._movingLeft = false
                         playerToMove._movingRight = true
                         playerToMove.horizontalNum = 1
                     break;
                     case "backward":
+                        if(playerToMove.currentSpd < spd) playerToMove.currentSpd+=.02
+                        // playerToMove.loc.z+=playerToMove.currentSpd
                         playerToMove._movingForward = false
                         playerToMove._movingBackward = true
                         playerToMove.verticalNum = -1
@@ -122,9 +133,8 @@ io.on("connection", socket => {
                         if(playerToMove._movingRight) playerToMove._movingLeft = false
                     break;
                 }
+                io.to(key).emit("a-player-moved", value.players)
                 playerToMove._movementName = data.movementName
-                log("forward", playerToMove._movingForward)
-                log("backward", playerToMove._movingBackward)
                 // log("left", playerToMove._movingLeft)
                 // log("right", playerToMove._movingRight)
             }
@@ -165,6 +175,7 @@ io.on("connection", socket => {
                     break;
                 }
                 playerToStop._movementName = data.movementName
+                playerToStop.currentSpd = 0
                 io.to(key).emit("player-stopped", data)
             }
         }
@@ -174,17 +185,21 @@ io.on("connection", socket => {
             if(!value.players.length) return
             value.players.forEach(pl => {
                 const plPos = pl.loc
-                if(pl._movingForward) {                                       
-                    pl.loc.z+=spd
+                if(pl._movingForward) {  
+                    if(pl.currentSpd < spd) pl.currentSpd+=.02                                     
+                    pl.loc.z+=pl.currentSpd
                 }
-                if(pl._movingBackward) {                                       
-                    pl.loc.z-=spd
+                if(pl._movingBackward) {   
+                    if(pl.currentSpd < spd) pl.currentSpd+=.02                                    
+                    pl.loc.z-=pl.currentSpd
                 }
                 if(pl._movingLeft) {
-                    pl.loc.x-=spd
+                    if(pl.currentSpd < spd) pl.currentSpd+=.02
+                    pl.loc.x-=pl.currentSpd
                 }
                 if(pl._movingRight) {
-                    pl.loc.x+=spd
+                    if(pl.currentSpd < spd) pl.currentSpd+=.02
+                    pl.loc.x+=pl.currentSpd
                 }
                 const diffX = pl.loc.x - plPos.x
                 const diffZ = pl.loc.z - plPos.z
@@ -196,7 +211,7 @@ io.on("connection", socket => {
             })              
             io.to(key).emit("a-player-moved", value.players)
         }
-    }, 30)
+    }, 60)
 
     socket.on('disconnect', () => {
         for (const [key, value] of rooms) {
