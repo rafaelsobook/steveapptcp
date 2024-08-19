@@ -62,6 +62,7 @@ io.on("connection", socket => {
             _movingRight: false,
             _movingBackward: false,
             _movementName: undefined,
+            _actionName: undefined,
             verticalNum: 0, // for direction z
             horizontalNum: 0, // for direction x,
             currentSpd: 0,
@@ -144,15 +145,15 @@ io.on("connection", socket => {
         for (const [key, value] of rooms) {
             let playerToStop = value.players.find(pl => pl._id === data._id)
             if(playerToStop) {
-                log("a player stopped")
+                
                 switch(data.movementName){
-                    case "jump":
-                        playerToStop._movingRight = false
-                        playerToStop._movingLeft = false   
-                        playerToStop._movingForward = false
-                        playerToStop._movingBackward = false
-                        log("jumping")
-                    break;
+                    // case "jump":
+                    //     playerToStop._movingRight = false
+                    //     playerToStop._movingLeft = false   
+                    //     playerToStop._movingForward = false
+                    //     playerToStop._movingBackward = false
+                    //     log("jumping")
+                    // break;
                     case "forward":
                         playerToStop._movingForward = false
                         playerToStop._movingBackward = false
@@ -180,25 +181,47 @@ io.on("connection", socket => {
             }
         }
     })
+    socket.on('emit-action', data => {
+        const {actionName, _id} = data
+        log(actionName)
+        for (const [key, value] of rooms) {
+            let playerEmittingAction = value.players.find(pl => pl._id === _id)
+            
+            if(playerEmittingAction) {
+                if(playerEmittingAction._actionName === actionName) return log('still on ', actionName)
+                switch(actionName){
+                    case "jump":
+                    
+                    break
+                }
+                playerEmittingAction._actionName = actionName
+                io.to(key).emit("player-emitted-action", data)
+                setTimeout(()=> {
+                    playerEmittingAction._actionName = undefined
+                    io.to(key).emit("remove-action", data)
+                }, 1000)
+            }
+        }
+    })
     setInterval(() => {
         for (const [key, value] of rooms) {
             if(!value.players.length) return
             value.players.forEach(pl => {
                 const plPos = pl.loc
                 if(pl._movingForward) {  
-                    if(pl.currentSpd < spd) pl.currentSpd+=.02                                     
+                    if(pl.currentSpd < spd) pl.currentSpd+=.05                 
                     pl.loc.z+=pl.currentSpd
                 }
                 if(pl._movingBackward) {   
-                    if(pl.currentSpd < spd) pl.currentSpd+=.02                                    
+                    if(pl.currentSpd < spd) pl.currentSpd+=.05                     
                     pl.loc.z-=pl.currentSpd
                 }
                 if(pl._movingLeft) {
-                    if(pl.currentSpd < spd) pl.currentSpd+=.02
+                    if(pl.currentSpd < spd) pl.currentSpd+=.05
                     pl.loc.x-=pl.currentSpd
                 }
                 if(pl._movingRight) {
-                    if(pl.currentSpd < spd) pl.currentSpd+=.02
+                    if(pl.currentSpd < spd) pl.currentSpd+=.05
                     pl.loc.x+=pl.currentSpd
                 }
                 const diffX = pl.loc.x - plPos.x
